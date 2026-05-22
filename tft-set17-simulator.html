@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFT Set 17 — Space Gods Rolling Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06080c;
+    --bg2: rgba(15, 18, 28, 0.75);
+    --bg3: rgba(15, 18, 28, 0.88);
+    --surface: rgba(15, 18, 28, 0.75);
+    --surface-strong: rgba(18, 23, 38, 0.92);
+    --surface-border: rgba(255, 255, 255, 0.06);
+    --text: #e8e4d8;
+    --muted: #8a92a8;
+    --gold: #d4a93a;
+    --gold2: #f0c96a;
+    --c1: #a0a0a0;
+    --c2: #4db56a;
+    --c3: #4d9bf5;
+    --c4: #b06eff;
+    --c5: #ff8c42;
+    --accent: #d4a93a;
+    --red: #e05555;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: radial-gradient(circle at 50% 25%, #1a1c29 0%, #06080c 70%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow);
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .logo-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--gold2);
+  }
+
+  .logo-set {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--surface-border);
+    padding: 24px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow);
+  }
+
+  .sidebar-section-title {
+    font-size: 11px;
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-left: 10px;
+    border-left: 2px solid var(--gold);
+  }
+
+  /* Stat Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    background: rgba(17, 22, 36, 0.85);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  /* Highlighted Gold card */
+  .stat-card.gold-large {
+    grid-column: span 2;
+    font-size: 26px;
+    color: var(--gold2);
+    background: linear-gradient(180deg, rgba(240,201,106,0.12), rgba(17,22,36,0.9));
+  }
+
+  .stat-label {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .stat-value.gold-val { color: var(--gold2); }
+
+  /* Controls */
+  .control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .control-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  select,
+  input[type="number"],
+  input[type="text"] {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    backdrop-filter: blur(6px);
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7085'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  select:hover,
+  input[type="number"]:hover,
+  input[type="text"]:hover {
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  select:focus,
+  input[type="number"]:focus,
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--gold2);
+    box-shadow: 0 0 0 4px rgba(240,201,106,0.12);
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* Odds display */
+  .odds-table {
+    width: 100%;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    border-collapse: collapse;
+  }
+
+  .odds-table td {
+    padding: 4px 0;
+    color: var(--muted);
+  }
+
+  .odds-table td:last-child {
+    text-align: right;
+    color: var(--text);
+  }
+
+  .odds-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  /* Trait synergies */
+  .trait-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .trait-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    border-radius: var(--radius);
+    background: var(--bg3);
+    font-size: 11px;
+    border: 0.5px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .trait-row.active {
+    border-color: var(--gold);
+    background: #d4a93a14;
+  }
+
+  .trait-name { color: var(--text); }
+  .trait-count { color: var(--muted); font-family: 'Space Mono', monospace; }
+  .trait-row.active .trait-count { color: var(--gold2); }
+
+  /* ── MAIN ── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px 24px;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  /* Sub-header tabs */
+  .subheader {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+
+  .tab-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--muted);
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .tab-btn.active {
+    background: linear-gradient(135deg, rgba(212,169,58,0.14), rgba(77,155,245,0.08));
+    border-color: rgba(240,201,106,0.3);
+    color: var(--gold2);
+  }
+
+  .tab-panel { display:none; flex-direction:column; gap:16px; }
+  .tab-panel.active { display:flex; }
+
+  /* Result cards for head-to-head */
+  .results-grid { display:flex; gap:12px; }
+  .result-card {
+    background: rgba(15, 18, 28, 0.8);
+    border-radius: 18px;
+    padding: 18px;
+    flex: 1;
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .result-card:hover { transform: translateY(-2px); }
+  .result-card .bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .result-card .bar > .fill { height: 100%; display: block; border-radius: 999px; }
+  .result-card.recommended { border-color: var(--gold2); box-shadow: 0 20px 60px rgba(240,201,106,0.28); }
+  .recommendation-badge {
+    background: var(--gold2);
+    color: #08101a;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 11px;
+    display: inline-flex;
+    letter-spacing: 0.02em;
+  }
+
+  /* Shop gradients */
+  .champ-card { position:relative; overflow:hidden; }
+  .champ-card::after { content: ''; position:absolute; left:0; right:0; bottom:0; height:22%; pointer-events:none; }
+  .champ-card.cost-1::after { background: linear-gradient(180deg, transparent, var(--c1, #a0a0a0)22%); }
+  .champ-card.cost-2::after { background: linear-gradient(180deg, transparent, var(--c2, #4db56a)22%); }
+  .champ-card.cost-3::after { background: linear-gradient(180deg, transparent, var(--c3, #4d9bf5)22%); }
+  .champ-card.cost-4::after { background: linear-gradient(180deg, transparent, var(--c4, #b06eff)22%); }
+  .champ-card.cost-5::after { background: linear-gradient(180deg, transparent, var(--c5, #ff8c42)22%); }
+
+  /* Shop */
+  .shop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+
+  .champ-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(15,18,28,0.85));
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    position: relative;
+    min-height: 118px;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .champ-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+  }
+
+  .champ-card.cost-1:hover { box-shadow: 0 22px 48px rgba(160,160,160,0.22), 0 0 18px rgba(160,160,160,0.14); }
+  .champ-card.cost-2:hover { box-shadow: 0 22px 48px rgba(77,181,106,0.22), 0 0 18px rgba(77,181,106,0.14); }
+  .champ-card.cost-3:hover { box-shadow: 0 22px 48px rgba(77,155,245,0.22), 0 0 18px rgba(77,155,245,0.14); }
+  .champ-card.cost-4:hover { box-shadow: 0 22px 48px rgba(176,110,255,0.22), 0 0 18px rgba(176,110,255,0.14); }
+  .champ-card.cost-5:hover { box-shadow: 0 22px 48px rgba(255,140,66,0.22), 0 0 18px rgba(255,140,66,0.14); }
+
+  .champ-card:active {
+    transform: translateY(-1px) scale(0.99);
+  }
+
+  .champ-card.empty {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .champ-card.empty:hover {
+    border-color: var(--border2);
+    background: var(--bg2);
+    transform: none;
+  }
+
+  .champ-card.already-owned {
+    border-color: #4d9bf533;
+  }
+
+  .champ-card.three-star-possible {
+    border-color: #f0c96a66;
+    animation: pulse-gold 1.5s infinite;
+  }
+
+  @keyframes pulse-gold {
+    0%, 100% { box-shadow: 0 0 0 0 #d4a93a00; }
+    50% { box-shadow: 0 0 8px 2px #d4a93a44; }
+  }
+
+  .cost-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: var(--text);
+  }
+
+  .cost-1 { color: var(--c1); }
+  .cost-2 { color: var(--c2); }
+  .cost-3 { color: var(--c3); }
+  .cost-4 { color: var(--c4); }
+  .cost-5 { color: var(--c5); }
+
+  .champ-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 2px solid var(--border);
+  }
+
+  .icon-border-1 { border-color: var(--c1); background: #a0a0a010; }
+  .icon-border-2 { border-color: var(--c2); background: #4db56a10; }
+  .icon-border-3 { border-color: var(--c3); background: #4d9bf510; }
+  .icon-border-4 { border-color: var(--c4); background: #b06eff10; }
+  .icon-border-5 { border-color: var(--c5); background: #ff8c4210; }
+
+  .champ-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .champ-traits {
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  /* Action buttons */
+  .action-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  button {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 9px 18px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border2);
+    cursor: pointer;
+    transition: background 0.12s, transform 0.08s, border-color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    letter-spacing: 0.02em;
+  }
+
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button:disabled:active { transform: none; }
+
+  .btn-reroll {
+    background: linear-gradient(135deg, #d4a93a, #f0c96a);
+    border-color: rgba(255,255,255,0.18);
+    color: #0a0b0f;
+    font-weight: 800;
+    box-shadow: 0 18px 40px rgba(212,169,58,0.22);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease, background 0.18s ease;
+  }
+
+  .btn-reroll:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 50px rgba(212,169,58,0.32);
+    filter: drop-shadow(0 0 18px rgba(240,201,106,0.25));
+  }
+
+  .btn-reroll:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 12px 24px rgba(212,169,58,0.2);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+  }
+
+  .btn-secondary:hover { background: var(--bg3); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border-color: #e0555533;
+  }
+
+  .btn-danger:hover { background: #e0555514; }
+
+  .btn-xp {
+    background: transparent;
+    border-color: #4d9bf544;
+    color: #4d9bf5;
+  }
+
+  .btn-xp:hover:not(:disabled) { background: #4d9bf514; }
+
+  /* Board */
+  .board-area {
+    min-height: 60px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px;
+    background: rgba(15,18,28,0.75);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .board-unit {
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    user-select: none;
+  }
+
+  .board-unit:hover {
+    border-color: var(--red);
+    background: #e0555514;
+    color: var(--red);
+  }
+
+  .board-unit .stars {
+    color: var(--gold2);
+    font-size: 10px;
+  }
+
+  .board-unit.bench-unit {
+    opacity: 0.7;
+    background: #6b708514;
+  }
+
+  .board-empty {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    padding: 4px 0;
+    align-self: center;
+  }
+
+  /* Log */
+  .log-area {
+    background: rgba(15,18,28,0.75);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    height: 140px;
+    overflow-y: auto;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .log-area::-webkit-scrollbar { width: 4px; }
+  .log-area::-webkit-scrollbar-track { background: transparent; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .log-line {
+    padding: 3px 0;
+    border-bottom: 0.5px solid var(--border);
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .log-line:last-child { border-bottom: none; }
+  .log-bought { color: var(--c2); }
+  .log-sold { color: var(--red); }
+  .log-rolled { color: var(--c3); }
+  .log-star { color: var(--gold2); }
+  .log-xp { color: var(--c4); }
+
+  /* XP / Level bar */
+  .xp-bar-wrap {
+    width: 100%;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .xp-bar {
+    height: 100%;
+    background: var(--c4);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    padding: 8px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+
+  /* Locked indicator */
+  .shop-locked-badge {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--gold);
+    background: #d4a93a18;
+    border: 0.5px solid #d4a93a44;
+    border-radius: 999px;
+    padding: 2px 8px;
+    letter-spacing: 0.06em;
+  }
+
+  .divider {
+    border: none;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .unit-limit-bar {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .unit-pip {
+    height: 4px;
+    flex: 1;
+    background: var(--bg3);
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+
+  .unit-pip.filled { background: var(--gold2); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-title">TFT Simulator</span>
+    <span class="logo-set">SET 17 · SPACE GODS</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn-secondary btn-danger" onclick="resetGame()">↺ Neue Runde</button>
+  </div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-section-title">Ressourcen</div>
+      <div class="stats-grid">
+        <div class="stat-card gold-large">
+          <div class="stat-label">Gold</div>
+          <div class="stat-value gold-val" id="gold-display">50</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Level</div>
+          <div class="stat-value" id="level-display">5</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Rerolls</div>
+          <div class="stat-value" id="roll-count">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Einheiten</div>
+          <div class="stat-value" id="unit-count">0/5</div>
+        </div>
+      </div>
+      <div class="unit-limit-bar" id="unit-pips"></div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Einstellungen</div>
+      <div class="control-row">
+        <div class="control-label">Startgold</div>
+        <select id="gold-select" onchange="setGold(this.value)">
+          <option value="20">20 Gold</option>
+          <option value="30">30 Gold</option>
+          <option value="50" selected>50 Gold</option>
+          <option value="75">75 Gold</option>
+          <option value="100">100 Gold</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Startlevel</div>
+        <select id="level-select" onchange="setLevel(this.value)">
+          <option value="4">Level 4</option>
+          <option value="5" selected>Level 5</option>
+          <option value="6">Level 6</option>
+          <option value="7">Level 7</option>
+          <option value="8">Level 8</option>
+          <option value="9">Level 9</option>
+          <option value="10">Level 10</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Wahrscheinlichkeiten (Level <span id="odds-level">5</span>)</div>
+      <table class="odds-table">
+        <tbody id="odds-table-body"></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Synergien</div>
+      <div class="trait-list" id="trait-list">
+        <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">— keine Einheiten —</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Monte Carlo</div>
+      <div class="control-row">
+        <div class="control-label">Champion</div>
+        <input type="text" id="sim-champ" placeholder="z.B. Ezreal" style="background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 10px; width: 100%; box-sizing: border-box;">
+      </div>
+      <div class="control-row">
+        <div class="control-label">Start Gold</div>
+        <input type="number" id="sim-gold" value="50" min="1" max="999" style="background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 10px; width: 100%; box-sizing: border-box;">
+      </div>
+      <div class="control-row">
+        <div class="control-label">Ziel (Kopien)</div>
+        <input type="number" id="sim-stars" value="6" min="1" max="99" style="background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 10px; width: 100%; box-sizing: border-box;">
+      </div>
+      <div class="control-row">
+        <div class="control-label">Target bereits weg</div>
+        <input type="number" id="sim-target-out" value="0" min="0" max="9" style="background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 10px; width: 100%; box-sizing: border-box;">
+      </div>
+      <div class="control-row">
+        <div class="control-label">Andere des Tiers weg</div>
+        <input type="number" id="sim-others-out" value="0" min="0" max="99" style="background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 10px; width: 100%; box-sizing: border-box;">
+      </div>
+      <div style="display:flex;gap:8px;width:100%;margin-top:6px;">
+        <button class="btn-secondary" onclick="runSimulation()" style="flex:1;">
+          ⚙️ Simulieren
+        </button>
+        <button class="btn-secondary" onclick="compareLevels()" style="flex:1;">
+          🔁 Compare Levels
+        </button>
+      </div>
+      <div id="sim-results" style="margin-top: 10px; font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; display: none;">
+        <div id="sim-output"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="subheader">
+      <button class="tab-btn active" id="tab-play-btn" onclick="switchTab('panel-play', this)">🎮 Play Sandbox</button>
+      <button class="tab-btn" id="tab-single-btn" onclick="switchTab('panel-single', this)">⚙️ Single Monte Carlo</button>
+      <button class="tab-btn" id="tab-compare-btn" onclick="switchTab('panel-compare', this)">🔁 Head-to-Head Compare</button>
+    </div>
+
+    <div id="panel-play" class="tab-panel active">
+      <!-- PLAY: original shop, actions, board, log -->
+      <div>
+        <div class="shop-header">
+          <div class="section-title">Shop</div>
+          <div id="locked-badge" style="display:none;"><span class="shop-locked-badge">🔒 EINGEFROREN</span></div>
+        </div>
+        <div class="shop-grid" id="shop-grid"></div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn-reroll" id="roll-btn" onclick="rollShop()">
+          🎲 Reroll — 2 Gold
+        </button>
+        <button class="btn-secondary" id="lock-btn" onclick="toggleLock()">
+          🔒 Einfrieren
+        </button>
+        <button class="btn-xp" id="xp-btn" onclick="buyXP()">
+          ⬆ XP kaufen — 4 Gold
+        </button>
+        <button class="btn-danger" onclick="resetGame()" style="margin-left:auto;">
+          ↺ Reset
+        </button>
+      </div>
+
+      <hr class="divider">
+
+      <div class="board-section">
+        <div class="shop-header">
+          <div class="section-title">Dein Team</div>
+          <span style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">Klick = Verkaufen</span>
+        </div>
+        <div class="board-area" id="board-area">
+          <span class="board-empty">Noch keine Einheiten</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title" style="margin-bottom:8px;">Verlauf</div>
+        <div class="log-area" id="log-area">
+          <div class="log-line">Willkommen! Reroll 2G · Einfrieren gratis · XP 4G.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-single" class="tab-panel">
+      <div class="section-title">Single Monte Carlo</div>
+      <div id="sim-main-output" style="min-height:120px;"></div>
+    </div>
+
+    <div id="panel-compare" class="tab-panel">
+      <div class="section-title">Head-to-Head Compare</div>
+      <div id="compare-main-output" class="results-grid" style="min-height:120px;"></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CHAMPION DATA — TFT Set 17: Space Gods ──
+const CHAMPIONS = [
+  // Cost 1
+  { name:"Aatrox",      cost:1, icon:"⚔️",  traits:["N.O.V.A.","Bastion"] },
+  { name:"Briar",       cost:1, icon:"🩸",  traits:["Anima","Primordian","Rogue"] },
+  { name:"Caitlyn",     cost:1, icon:"🔫",  traits:["N.O.V.A.","Sniper"] },
+  { name:"Cho'Gath",    cost:1, icon:"😈",  traits:["Dark Star","Brawler"] },
+  { name:"Ezreal",      cost:1, icon:"🌀",  traits:["Timebreaker","Sniper"] },
+  { name:"Leona",       cost:1, icon:"☀️",  traits:["Arbiter","Vanguard"] },
+  { name:"Lissandra",   cost:1, icon:"🧊",  traits:["Dark Star","Replicator","Shepherd"] },
+  { name:"Nasus",       cost:1, icon:"🐺",  traits:["Space Groove","Vanguard"] },
+  { name:"Poppy",       cost:1, icon:"🔨",  traits:["Meeple","Bastion"] },
+  { name:"Rek'Sai",     cost:1, icon:"🦈",  traits:["Primordian","Brawler"] },
+  { name:"Talon",       cost:1, icon:"🗡️",  traits:["Stargazer","Rogue"] },
+  { name:"Teemo",       cost:1, icon:"🍄",  traits:["Space Groove","Shepherd"] },
+  { name:"Twisted Fate",cost:1, icon:"🃏",  traits:["Stargazer","Fateweaver"] },
+  { name:"Veigar",      cost:1, icon:"🌑",  traits:["Meeple","Replicator"] },
+  // Cost 2
+  { name:"Akali",       cost:2, icon:"🥷",  traits:["N.O.V.A.","Marauder"] },
+  { name:"Bel'Veth",    cost:2, icon:"🌀",  traits:["Primordian","Challenger","Marauder"] },
+  { name:"Gnar",        cost:2, icon:"🪃",  traits:["Meeple","Sniper"] },
+  { name:"Gragas",      cost:2, icon:"🍺",  traits:["Psionic","Brawler"] },
+  { name:"Gwen",        cost:2, icon:"✂️",  traits:["Space Groove","Rogue"] },
+  { name:"Jax",         cost:2, icon:"🪓",  traits:["Stargazer","Bastion"] },
+  { name:"Jinx",        cost:2, icon:"💣",  traits:["Anima","Challenger"] },
+  { name:"Meepsie",     cost:2, icon:"🐾",  traits:["Meeple","Shepherd","Voyager"] },
+  { name:"Milio",       cost:2, icon:"🌿",  traits:["Timebreaker","Fateweaver"] },
+  { name:"Mordekaiser", cost:2, icon:"⚰️",  traits:["Dark Star","Vanguard","Conduit"] },
+  { name:"Pantheon",    cost:2, icon:"🛡️",  traits:["Timebreaker","Brawler","Replicator"] },
+  { name:"Pyke",        cost:2, icon:"🔱",  traits:["Psionic","Voyager"] },
+  { name:"Zoe",         cost:2, icon:"⭐",  traits:["Arbiter","Conduit"] },
+  // Cost 3
+  { name:"Aurora",      cost:3, icon:"🌌",  traits:["Anima","Voyager"] },
+  { name:"Diana",       cost:3, icon:"🌙",  traits:["Arbiter","Challenger"] },
+  { name:"Fizz",        cost:3, icon:"🐟",  traits:["Meeple","Rogue"] },
+  { name:"Illaoi",      cost:3, icon:"🐙",  traits:["Anima","Vanguard","Shepherd"] },
+  { name:"Kai'Sa",      cost:3, icon:"💫",  traits:["Dark Star","Rogue"] },
+  { name:"Lulu",        cost:3, icon:"🌸",  traits:["Stargazer","Replicator"] },
+  { name:"Maokai",      cost:3, icon:"🌳",  traits:["N.O.V.A.","Brawler"] },
+  { name:"Miss Fortune",cost:3, icon:"🍀",  traits:["Gun Goddess"] },
+  { name:"Ornn",        cost:3, icon:"🔥",  traits:["Space Groove","Bastion"] },
+  { name:"Rhaast",      cost:3, icon:"🌑",  traits:["Redeemer"] },
+  { name:"Samira",      cost:3, icon:"🌹",  traits:["Space Groove","Sniper"] },
+  { name:"Urgot",       cost:3, icon:"🦾",  traits:["Mecha","Brawler","Marauder"] },
+  { name:"Viktor",      cost:3, icon:"🔬",  traits:["Psionic","Conduit"] },
+  // Cost 4
+  { name:"Aurelion Sol",cost:4, icon:"🌠",  traits:["Mecha","Conduit"] },
+  { name:"Corki",       cost:4, icon:"✈️",  traits:["Meeple","Fateweaver"] },
+  { name:"Karma",       cost:4, icon:"🕊️",  traits:["Dark Star","Voyager"] },
+  { name:"Kindred",     cost:4, icon:"🦋",  traits:["N.O.V.A.","Challenger"] },
+  { name:"LeBlanc",     cost:4, icon:"🃏",  traits:["Arbiter","Shepherd"] },
+  { name:"Master Yi",   cost:4, icon:"⚔️",  traits:["Psionic","Marauder"] },
+  { name:"Nami",        cost:4, icon:"🌊",  traits:["Space Groove","Replicator"] },
+  { name:"Nunu",        cost:4, icon:"🐻",  traits:["Stargazer","Vanguard"] },
+  { name:"Rammus",      cost:4, icon:"🔵",  traits:["Meeple","Bastion"] },
+  { name:"Riven",       cost:4, icon:"💙",  traits:["Timebreaker","Rogue"] },
+  { name:"Tahm Kench",  cost:4, icon:"🐸",  traits:["Oracle","Brawler"] },
+  { name:"The Mighty Mech",cost:4,icon:"🤖",traits:["Mecha","Voyager"] },
+  { name:"Xayah",       cost:4, icon:"🪶",  traits:["Stargazer","Sniper"] },
+  // Cost 5
+  { name:"Bard",        cost:5, icon:"🎺",  traits:["Meeple","Conduit"] },
+  { name:"Blitzcrank",  cost:5, icon:"⚡",  traits:["Space Groove","Vanguard","Party Animal"] },
+  { name:"Fiora",       cost:5, icon:"🌺",  traits:["Anima","Divine Duelist","Marauder"] },
+  { name:"Graves",      cost:5, icon:"💥",  traits:["Factory New"] },
+  { name:"Jhin",        cost:5, icon:"🎭",  traits:["Dark Star","Eradicator","Sniper"] },
+  { name:"Morgana",     cost:5, icon:"🖤",  traits:["Dark Lady"] },
+  { name:"Shen",        cost:5, icon:"🛡️",  traits:["Bulwark","Bastion"] },
+  { name:"Sona",        cost:5, icon:"🎵",  traits:["Commander","Shepherd","Psionic"] },
+  { name:"Vex",         cost:5, icon:"😒",  traits:["Doomer"] },
+];
+
+// Pool sizes per cost
+const POOL_SIZE = { 1: 29, 2: 22, 3: 18, 4: 10, 5: 9 };
+
+// Odds per level [cost1%, cost2%, cost3%, cost4%, cost5%]
+const ODDS = {
+  4:  [55, 30, 15,  0,  0],
+  5:  [45, 33, 20,  2,  0],
+  6:  [30, 40, 25,  5,  0],
+  7:  [19, 30, 40, 10,  1],
+  8:  [15, 20, 32, 30,  3],
+  9:  [10, 17, 25, 33, 15],
+  10: [5, 10, 20, 40, 25],
+};
+
+// XP needed per level
+const XP_REQ = { 1:0, 2:2, 3:6, 4:10, 5:20, 6:36, 7:56, 8:80, 9:100, 10:Infinity };
+
+// Bench slots
+const BENCH_SLOTS = 9;
+
+// ── STATE ──
+let gold, level, xp, rollCount, shop, board, locked, logLines;
+
+function initState() {
+  gold = parseInt(document.getElementById('gold-select').value);
+  level = parseInt(document.getElementById('level-select').value);
+  xp = 0;
+  rollCount = 0;
+  shop = [null, null, null, null, null];
+  board = [];
+  locked = false;
+  logLines = ['Willkommen! Reroll 2G · Einfrieren gratis · XP 4G.'];
+}
+
+// ── HELPERS ──
+function getMaxUnits() { return level + BENCH_SLOTS; }
+function getBoardSlots() { return level; }
+
+function pickChamp() {
+  const odds = ODDS[level];
+  const r = Math.random() * 100;
+  let cum = 0, tier = 0;
+  for (let i = 0; i < odds.length; i++) {
+    cum += odds[i];
+    if (r < cum) { tier = i + 1; break; }
+  }
+  const pool = CHAMPIONS.filter(c => c.cost === tier);
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function generateShop() {
+  shop = Array.from({ length: 5 }, () => pickChamp());
+}
+
+// ── ACTIONS ──
+function rollShop() {
+  if (gold < 2) { toast('Zu wenig Gold!'); return; }
+  gold -= 2;
+  rollCount++;
+  if (!locked) generateShop();
+  locked = false;
+  updateLockUI();
+  addLog(`<span class="log-rolled">🎲 Gererollt</span> — ${gold + 2}G → ${gold}G`);
+  render();
+}
+
+function toggleLock() {
+  locked = !locked;
+  updateLockUI();
+  toast(locked ? '🔒 Shop eingefroren' : '🔓 Shop entsperrt');
+}
+
+function updateLockUI() {
+  const btn = document.getElementById('lock-btn');
+  const badge = document.getElementById('locked-badge');
+  btn.textContent = locked ? '🔓 Entsperren' : '🔒 Einfrieren';
+  badge.style.display = locked ? 'block' : 'none';
+}
+
+function buyXP() {
+  if (gold < 4) { toast('Zu wenig Gold für XP!'); return; }
+  if (level >= 10) { toast('Maximallevel erreicht!'); return; }
+  gold -= 4;
+  xp += 4;
+  while (level < 10 && xp >= XP_REQ[level + 1]) {
+    xp -= XP_REQ[level + 1];
+    level++;
+    const newBoardSlots = getBoardSlots();
+    const benchUnits = board.filter(u => u.onBench);
+    for (let i = 0; i < benchUnits.length; i++) {
+      if (i < newBoardSlots - (board.length - benchUnits.length)) {
+        benchUnits[i].onBench = false;
+      }
+    }
+    addLog(`<span class="log-xp">⬆ Level Up!</span> — Jetzt Level ${level}`);
+    generateShop();
+  }
+  addLog(`<span class="log-xp">📈 XP gekauft</span> — ${gold + 4}G → ${gold}G`);
+  render();
+}
+
+function buyChamp(idx) {
+  const c = shop[idx];
+  if (!c) return;
+  if (gold < c.cost) { toast('Zu wenig Gold!'); return; }
+  if (board.length >= getMaxUnits()) { toast(`Einheitenlimit (${getMaxUnits()}) erreicht!`); return; }
+
+  gold -= c.cost;
+  shop[idx] = null;
+  const boardSlots = board.filter(u => !u.onBench).length;
+  const onBench = boardSlots >= getBoardSlots();
+  board.push({ ...c, stars: 1, onBench });
+  addLog(`<span class="log-bought">✓ Gekauft</span> — ${c.icon} ${c.name} (${c.cost}G)${onBench ? ' <span style="color:var(--muted);">→ Bench</span>' : ''}`);
+  processChampionMerges(c.name);
+  render();
+}
+
+function processChampionMerges(name) {
+  while (true) {
+    const units = board.filter(u => u.name === name);
+    const oneStars = units.filter(u => u.stars === 1).length;
+    const twoStars = units.filter(u => u.stars === 2).length;
+
+    if (oneStars >= 3) {
+      removeBoardUnits(name, 1, 3);
+      board.push({ ...units[0], stars: 2 });
+      addLog(`<span class="log-star">★★ 2-Sterne!</span> — ${units[0].icon} ${units[0].name}`);
+      continue;
+    }
+
+    if (twoStars >= 3) {
+      removeBoardUnits(name, 2, 3);
+      board.push({ ...units[0], stars: 3 });
+      addLog(`<span class="log-star">★★★ 3-STERNE!</span> — ${units[0].icon} ${units[0].name} 🎉`);
+      toast(`⭐⭐⭐ ${units[0].name} — 3-Sterne!`);
+      continue;
+    }
+
+    break;
+  }
+}
+
+function removeBoardUnits(name, stars, count) {
+  let removed = 0;
+  for (let i = board.length - 1; i >= 0 && removed < count; i--) {
+    if (board[i].name === name && board[i].stars === stars) {
+      board.splice(i, 1);
+      removed++;
+    }
+  }
+}
+
+function sellUnit(name) {
+  const idx = board.findIndex(b => b.name === name);
+  if (idx === -1) return;
+  const u = board[idx];
+  const refund = u.cost * (u.stars === 3 ? 9 : u.stars === 2 ? 3 : 1);
+  gold += refund;
+  board.splice(idx, 1);
+  addLog(`<span class="log-sold">↩ Verkauft</span> — ${u.icon} ${u.name} (+${refund}G)`);
+  render();
+}
+
+function setGold(v) { gold = parseInt(v); render(); }
+function setLevel(v) { level = parseInt(v); render(); }
+
+function resetGame() {
+  initState();
+  generateShop();
+  locked = false;
+  updateLockUI();
+  document.getElementById('log-area').innerHTML = '<div class="log-line">Neue Runde gestartet.</div>';
+  logLines = [];
+  render();
+}
+
+function addLog(msg) {
+  logLines.unshift(msg);
+  if (logLines.length > 50) logLines.pop();
+  const el = document.getElementById('log-area');
+  el.innerHTML = logLines.map(l => `<div class="log-line">${l}</div>`).join('');
+}
+
+// ── RENDER ──
+function render() {
+  // Stats
+  document.getElementById('gold-display').textContent = gold;
+  document.getElementById('level-display').textContent = level;
+  document.getElementById('roll-count').textContent = rollCount;
+  const boardCount = board.filter(u => !u.onBench).length;
+  const benchCount = board.filter(u => u.onBench).length;
+  document.getElementById('unit-count').textContent = `${boardCount}/${getBoardSlots()} | Bench: ${benchCount}/${BENCH_SLOTS}`;
+  document.getElementById('odds-level').textContent = level;
+
+  // Unit pips (board slots only)
+  const pips = document.getElementById('unit-pips');
+  pips.innerHTML = Array.from({ length: getBoardSlots() }, (_, i) =>
+    `<div class="unit-pip${i < boardCount ? ' filled' : ''}"></div>`
+  ).join('');
+
+  // Roll btn
+  document.getElementById('roll-btn').disabled = gold < 2;
+  document.getElementById('xp-btn').disabled = gold < 4 || level >= 10;
+
+  // Odds table
+  const odds = ODDS[level];
+  const costColors = ['', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+  const costLabels = ['', '1-Kosten', '2-Kosten', '3-Kosten', '4-Kosten', '5-Kosten'];
+  document.getElementById('odds-table-body').innerHTML = odds.map((o, i) =>
+    `<tr><td><span class="odds-dot" style="background:${costColors[i+1]}"></span>${costLabels[i+1]}</td><td>${o}%</td></tr>`
+  ).join('');
+
+  // Shop
+  const shopGrid = document.getElementById('shop-grid');
+  const boardNames = board.reduce((acc, b) => { acc[b.name] = (acc[b.name]||0) + b.stars; return acc; }, {});
+
+  shopGrid.innerHTML = shop.map((c, i) => {
+    if (!c) return `<div class="champ-card empty"><span style="font-size:20px;color:var(--border2);">—</span></div>`;
+    const bCount = boardNames[c.name] || 0;
+    const isPossible3 = bCount === 2;
+    const isOwned = bCount > 0;
+    let cls = 'champ-card cost-' + c.cost;
+    if (isPossible3) cls += ' three-star-possible';
+    else if (isOwned) cls += ' already-owned';
+    return `<div class="${cls}" onclick="buyChamp(${i})" title="${c.name} kaufen (${c.cost}G)">
+      <span class="cost-badge cost-${c.cost}">${c.cost}G</span>
+      <div class="champ-icon icon-border-${c.cost}">${c.icon}</div>
+      <div class="champ-name">${c.name}</div>
+      <div class="champ-traits">${c.traits.slice(0,3).join(' · ')}</div>
+    </div>`;
+  }).join('');
+
+  // Board
+  const boardArea = document.getElementById('board-area');
+  if (board.length === 0) {
+    boardArea.innerHTML = '<span class="board-empty">Noch keine Einheiten — kaufe Helden aus dem Shop</span>';
+  } else {
+    const boardUnits = board.filter(u => !u.onBench);
+    const benchUnits = board.filter(u => u.onBench);
+    let html = '';
+    if (boardUnits.length > 0) {
+      html += boardUnits.map(u => {
+        const stars = '★'.repeat(u.stars);
+        return `<div class="board-unit" onclick="sellUnit('${u.name}')" title="Verkaufen">
+          ${u.icon} ${u.name} <span class="stars">${stars}</span>
+        </div>`;
+      }).join('');
+    }
+    if (benchUnits.length > 0) {
+      html += '<div style="border-top: 0.5px solid var(--border); padding-top: 8px; margin-top: 8px; width: 100%; flex-basis: 100%;"></div>';
+      html += '<span style="font-size:10px;color:var(--muted);font-family:\'Space Mono\',monospace;width:100%;text-align:center;display:block;margin-top:4px;margin-bottom:4px;">Bench</span>';
+      html += benchUnits.map(u => {
+        const stars = '★'.repeat(u.stars);
+        return `<div class="board-unit bench-unit" onclick="sellUnit('${u.name}')" title="Verkaufen">
+          ${u.icon} ${u.name} <span class="stars">${stars}</span>
+        </div>`;
+      }).join('');
+    }
+    boardArea.innerHTML = html;
+  }
+
+  // Traits (unique champions only)
+  const traitMap = {};
+  const uniqueChamps = {};
+  
+  // Keep only the highest star version of each champion
+  board.forEach(u => {
+    if (!uniqueChamps[u.name]) {
+      uniqueChamps[u.name] = u;
+    } else if (u.stars > uniqueChamps[u.name].stars) {
+      uniqueChamps[u.name] = u;
+    }
+  });
+  
+  // Count traits from unique champions only (1 per unique champion)
+  Object.values(uniqueChamps).forEach(u => {
+    u.traits.forEach(t => {
+      traitMap[t] = (traitMap[t] || 0) + 1;
+    });
+  });
+  const traitList = document.getElementById('trait-list');
+  const entries = Object.entries(traitMap).sort((a,b) => b[1]-a[1]);
+  if (entries.length === 0) {
+    traitList.innerHTML = '<div style="font-size:11px;color:var(--muted);font-family:\'Space Mono\',monospace;">— keine Einheiten —</div>';
+  } else {
+    traitList.innerHTML = entries.map(([t, n]) =>
+      `<div class="trait-row${n >= 2 ? ' active' : ''}">
+        <span class="trait-name">${t}</span>
+        <span class="trait-count">${n}x</span>
+      </div>`
+    ).join('');
+  }
+}
+
+// Tab switching for subheader
+function switchTab(tabId, btn) {
+  // panels
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById(tabId);
+  if (panel) panel.classList.add('active');
+
+  // buttons
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn && btn.classList) btn.classList.add('active');
+}
+
+// ── TOAST ──
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.style.opacity = 0, 2000);
+}
+
+// ── MONTE CARLO SIMULATION ──
+function runSimulation() {
+  const champName = document.getElementById('sim-champ').value.trim();
+  const targetCopies = parseInt(document.getElementById('sim-stars').value);
+  const targetOut = parseInt(document.getElementById('sim-target-out').value) || 0;
+  const othersOut = parseInt(document.getElementById('sim-others-out').value) || 0;
+  
+  if (!champName) { toast('Champion eingeben!'); return; }
+  const champ = CHAMPIONS.find(c => c.name.toLowerCase() === champName.toLowerCase());
+  if (!champ) { toast('Champion nicht gefunden!'); return; }
+  
+  // Validate pool depletion
+  const tier = champ.cost;
+  const tierChamps = CHAMPIONS.filter(c => c.cost === tier);
+  const totalOtherPool = (tierChamps.length - 1) * POOL_SIZE[tier];
+  if (othersOut > totalOtherPool) {
+    toast(`Max andere weg: ${totalOtherPool}`);
+    return;
+  }
+  if (targetOut >= POOL_SIZE[tier]) {
+    toast(`Max target weg: ${POOL_SIZE[tier] - 1}`);
+    return;
+  }
+  
+  const simGold = parseInt(document.getElementById('sim-gold').value) || 50;
+  const startLevel = parseInt(document.getElementById('level-select').value);
+  const ownedCopies = board.filter(u => u.name === champ.name)
+    .reduce((sum, u) => sum + (u.stars === 3 ? 9 : u.stars === 2 ? 3 : 1), 0);
+  
+  // Run trials for the single selected level (no level-up cost applied)
+  const stats = runLevelTrials(champ, targetCopies, simGold, startLevel, targetOut, othersOut, ownedCopies, 10000);
+  displaySimResults(stats, champ);
+}
+
+function runSingleTrial(champName, champCost, targetCopies, startGold, simLevel, targetOut, othersOut, ownedCopies = 0) {
+  let currentGold = startGold;
+  let goldSpent = 0;
+  let rolls = 0;
+  let currentCopies = ownedCopies;
+  let oneStars = ownedCopies;
+  let twoStars = 0, threeStars = 0;
+
+  // Pre-merge existing owned copies for correct star state
+  while (oneStars >= 3) {
+    oneStars -= 3;
+    twoStars++;
+  }
+  while (twoStars >= 3) {
+    twoStars -= 3;
+    threeStars++;
+  }
+
+  // Initialize pool state
+  const tierChamps = CHAMPIONS.filter(c => c.cost === champCost);
+  let targetPool = POOL_SIZE[champCost] - targetOut; // remaining copies of the exact champion
+  // total remaining pool for the tier (all types combined)
+  let totalPool = (tierChamps.length * POOL_SIZE[champCost]) - targetOut - othersOut;
+
+  while (true) {
+    // Check if target reached
+    const totalCopies = oneStars + (twoStars * 3) + (threeStars * 9);
+    if (totalCopies >= targetCopies) {
+      return { success: true, rolls, goldSpent };
+    }
+
+    // Check if we can afford a reroll
+    if (currentGold >= 2) {
+      currentGold -= 2; // Reroll cost
+      goldSpent += 2;
+      rolls++;
+
+      // Simulate rolling 5 units from a single shop snapshot
+      let targetHitsInThisShop = 0;
+      const snapshotTargetPool = targetPool;
+      const snapshotTotalPool = totalPool;
+
+      for (let i = 0; i < 5; i++) {
+        const tier = getRandomTier(simLevel);
+
+        if (tier === champCost && snapshotTotalPool > 0 && snapshotTargetPool > 0) {
+          const hitTarget = Math.random() < (snapshotTargetPool / snapshotTotalPool);
+          if (hitTarget && currentGold >= champCost) {
+            targetHitsInThisShop++;
+            currentGold -= champCost;
+            goldSpent += champCost;
+            oneStars++;
+            currentCopies++;
+          }
+        }
+      }
+
+      // Deplete pool for the next reroll based on purchased targets from this shop
+      targetPool = Math.max(0, targetPool - targetHitsInThisShop);
+      totalPool = Math.max(0, totalPool - targetHitsInThisShop);
+
+      // Auto-upgrade after roll
+      while (oneStars >= 3) {
+        oneStars -= 3;
+        twoStars++;
+      }
+      while (twoStars >= 3) {
+        twoStars -= 3;
+        threeStars++;
+      }
+
+      // Check if target reached
+      const count = oneStars + (twoStars * 3) + (threeStars * 9);
+      if (count >= targetCopies) {
+        return { success: true, rolls, goldSpent };
+      }
+    } else {
+      // Failed - not enough gold to continue
+      return { success: false, rolls, goldSpent };
+    }
+  }
+}
+
+function getRandomTier(level) {
+  const odds = ODDS[level];
+  const r = Math.random() * 100;
+  let cum = 0;
+  for (let i = 0; i < odds.length; i++) {
+    cum += odds[i];
+    if (r < cum) return i + 1;
+  }
+  return 1;
+}
+
+// Run a batch of Monte Carlo trials for a specific simulated level
+function runLevelTrials(champ, targetCopies, simGold, simLevel, targetOut, othersOut, ownedCopies = 0, numTrials = 10000) {
+  const results = [];
+  for (let t = 0; t < numTrials; t++) {
+    results.push(runSingleTrial(champ.name, champ.cost, targetCopies, simGold, simLevel, targetOut, othersOut, ownedCopies));
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  const successChance = (successCount / numTrials) * 100;
+  const successfulRolls = results.filter(r => r.success).map(r => r.rolls);
+  const successfulGoldSpent = results.filter(r => r.success).map(r => r.goldSpent);
+  const averageRolls = successfulRolls.length > 0
+    ? successfulRolls.reduce((sum, r) => sum + r, 0) / successfulRolls.length
+    : 0;
+  const averageGoldSpent = successfulGoldSpent.length > 0
+    ? successfulGoldSpent.reduce((sum, g) => sum + g, 0) / successfulGoldSpent.length
+    : 0;
+
+  return {
+    level: simLevel,
+    successChance,
+    averageRolls,
+    averageGoldSpent,
+    startGold: simGold,
+    successCount,
+    numTrials
+  };
+}
+
+// Compare three levels (level-1, level, level+1 when available)
+function compareLevels() {
+  const champName = document.getElementById('sim-champ').value.trim();
+  const targetCopies = parseInt(document.getElementById('sim-stars').value);
+  const targetOut = parseInt(document.getElementById('sim-target-out').value) || 0;
+  const othersOut = parseInt(document.getElementById('sim-others-out').value) || 0;
+  const simGold = parseInt(document.getElementById('sim-gold').value) || 50;
+  const baseLevel = parseInt(document.getElementById('level-select').value);
+
+  if (!champName) { toast('Champion eingeben!'); return; }
+  const champ = CHAMPIONS.find(c => c.name.toLowerCase() === champName.toLowerCase());
+  if (!champ) { toast('Champion nicht gefunden!'); return; }
+  const tier = champ.cost;
+  const tierChamps = CHAMPIONS.filter(c => c.cost === tier);
+  const totalOtherPool = (tierChamps.length - 1) * POOL_SIZE[tier];
+  if (othersOut > totalOtherPool) {
+    toast(`Max andere weg: ${totalOtherPool}`);
+    return;
+  }
+  if (targetOut >= POOL_SIZE[tier]) {
+    toast(`Max target weg: ${POOL_SIZE[tier] - 1}`);
+    return;
+  }
+  const ownedCopies = board.filter(u => u.name === champ.name)
+    .reduce((sum, u) => sum + (u.stars === 3 ? 9 : u.stars === 2 ? 3 : 1), 0);
+
+  const levels = [];
+  if (baseLevel - 1 >= 4) levels.push(baseLevel - 1);
+  if (baseLevel >= 4) levels.push(baseLevel);
+  if (baseLevel + 1 <= 10) levels.push(baseLevel + 1);
+
+  const statsArr = [];
+  for (const lvl of levels) {
+    // compute gold cost to reach lvl from current level/xp state
+    let requiredXP = 0;
+    if (lvl > level) {
+      for (let L = level; L < lvl; L++) {
+        requiredXP += XP_REQ[L + 1] || 0;
+      }
+      requiredXP = Math.max(0, requiredXP - xp);
+    } else {
+      requiredXP = 0;
+    }
+    const upfrontGold = requiredXP > 0 ? Math.ceil(requiredXP / 4) * 4 : 0;
+    const simGoldAdjusted = simGold - upfrontGold;
+    if (simGoldAdjusted < 0) {
+      statsArr.push({ level: lvl, successChance: 0, averageRolls: 0, averageGoldSpent: 0, startGold: simGoldAdjusted, upfrontGold, successCount: 0, numTrials: 10000 });
+      continue;
+    }
+    const s = runLevelTrials(champ, targetCopies, simGoldAdjusted, lvl, targetOut, othersOut, ownedCopies, 10000);
+    s.upfrontGold = upfrontGold;
+    s.averageRemainingGold = Math.max(0, simGoldAdjusted - s.averageGoldSpent);
+    statsArr.push(s);
+  }
+
+  displayCompareResults(statsArr, baseLevel);
+}
+
+function simulatePickChampFromPool(simLevel, tierPools) {
+  const odds = ODDS[simLevel];
+  const r = Math.random() * 100;
+  let cum = 0;
+  let tier = 0;
+  for (let i = 0; i < odds.length; i++) {
+    cum += odds[i];
+    if (r < cum) { tier = i + 1; break; }
+  }
+  const pool = tierPools[tier] || [];
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function shuffleArray(array) {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function simulatePickChamp(simLevel) {
+  const odds = ODDS[simLevel];
+  const r = Math.random() * 100;
+  let cum = 0, tier = 0;
+  for (let i = 0; i < odds.length; i++) {
+    cum += odds[i];
+    if (r < cum) { tier = i + 1; break; }
+  }
+  const pool = CHAMPIONS.filter(c => c.cost === tier);
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function displaySimResults(stats, champ) {
+  const mainOut = document.getElementById('sim-main-output');
+  const sidebarOut = document.getElementById('sim-output');
+  const outputDiv = mainOut || sidebarOut;
+  
+  const successChanceStr = stats.successChance.toFixed(1);
+  const averageRollsStr = stats.averageRolls.toFixed(1);
+  const averageGoldStr = stats.averageGoldSpent.toFixed(1);
+  const goldUsagePercent = ((stats.averageGoldSpent / stats.startGold) * 100).toFixed(1);
+  
+  let html = `<div>`;
+  html += `<div style="color: var(--gold2); font-size: 16px; font-weight: 700; margin-bottom: 6px;">`;
+  html += `${successChanceStr}%`;
+  html += `</div>`;
+  html += `<div style="color: var(--text); font-size: 11px; line-height: 1.6;">`;
+  html += `Erfolgschance<br>`;
+  html += `<span style="color: var(--muted);">(${stats.successCount} / ${stats.numTrials} Versuche)</span>`;
+  html += `</div>`;
+  
+  if (stats.successCount > 0) {
+    html += `<div style="color: var(--text); font-size: 11px; margin-top: 8px; padding-top: 6px; border-top: 0.5px solid var(--border);">`;
+    html += `Ø Rolls (erfolgreich):<br>`;
+    html += `<span style="color: var(--c3);">${averageRollsStr}</span>`;
+    html += `</div>`;
+    html += `<div style="color: var(--text); font-size: 11px; margin-top: 6px;">`;
+    html += `Ø Gold gespendet:<br>`;
+    html += `<span style="color: var(--gold2);">${averageGoldStr} / ${stats.startGold}G (${goldUsagePercent}%)</span>`;
+    html += `</div>`;
+  } else {
+    html += `<div style="color: var(--red); font-size: 11px; margin-top: 8px; padding-top: 6px; border-top: 0.5px solid var(--border);">`;
+    html += `Keine erfolgreichen Versuche`;
+    html += `</div>`;
+  }
+  
+  html += `</div>`;
+  
+  outputDiv.innerHTML = html;
+  if (mainOut) switchTab('panel-single');
+}
+
+function displayCompareResults(statsArr, baseLevel) {
+  const mainOut = document.getElementById('compare-main-output');
+  const sidebarOut = document.getElementById('sim-output');
+  const outputDiv = mainOut || sidebarOut;
+  if (!statsArr || statsArr.length === 0) return;
+
+  // Find best by successChance
+  let best = statsArr[0];
+  for (const s of statsArr) if (s.successChance > (best.successChance || 0)) best = s;
+
+  let html = '';
+  html += `<div class="results-grid">`;
+  for (const s of statsArr) {
+    const sc = (s.successChance || 0).toFixed(1);
+    const avgRem = (s.averageRemainingGold !== undefined) ? s.averageRemainingGold.toFixed(1) : ((s.startGold - (s.averageGoldSpent||0))||0).toFixed(1);
+    const upfront = s.upfrontGold || 0;
+    const isBest = s.level === best.level;
+    const barColor = isBest ? 'var(--gold2)' : (s.successChance > 0 ? 'var(--c3)' : 'var(--border2)');
+
+    html += `<div class="result-card${isBest ? ' recommended' : ''}">`;
+    if (isBest) html += `<div style="display:flex;justify-content:flex-end;"><span class="recommendation-badge">Top Choice</span></div>`;
+    html += `<div style="font-weight:800;font-size:16px;margin-bottom:8px;">Level ${s.level}</div>`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:12px;color:var(--muted);">Erfolgschance</div><div style="font-weight:800;color:${barColor};">${sc}%</div></div>`;
+    html += `<div class="bar" style="margin-bottom:10px;"><span class="fill" style="width:${Math.min(100, Math.max(0, s.successChance||0))}%;background:${barColor};display:block;"></span></div>`;
+    html += `<div style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;">`;
+    html += `<div>Ø Restgold: <span style="color:var(--gold2);">${avgRem}G</span></div>`;
+    html += `<div>Aufwand (Levelup): <span style="color:var(--gold2);">${upfront}G</span></div>`;
+    html += `<div>Trials: <span style="color:var(--muted);">${s.numTrials}</span></div>`;
+    html += `</div>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  outputDiv.innerHTML = html;
+  if (mainOut) switchTab('panel-compare');
+}
+
+// ── INIT ──
+initState();
+generateShop();
+render();
+</script>
+</body>
+</html>
