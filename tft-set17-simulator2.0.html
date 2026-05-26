@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFT Set 17 — Monte Carlo Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #06080c;
+    --bg2:     rgba(15, 18, 28, 0.75);
+    --bg3:     rgba(18, 23, 38, 0.88);
+    --surface: rgba(15, 18, 28, 0.78);
+    --surface-border: rgba(255, 255, 255, 0.06);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.12);
+    --text:    #e8e4d8;
+    --muted:   #8a92a8;
+    --gold:    #d4a93a;
+    --gold2:   #f0c96a;
+    --c1: #a0a0a0;
+    --c2: #4db56a;
+    --c3: #4d9bf5;
+    --c4: #b06eff;
+    --c5: #ff8c42;
+    --red: #e05555;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 24px 80px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: radial-gradient(circle at 50% 20%, #151829 0%, #06080c 65%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--surface-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo { display: flex; align-items: baseline; gap: 12px; }
+  .logo-title { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: var(--gold2); }
+  .logo-set {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+  }
+  .logo-sub a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px dashed transparent;
+    transition: color .2s, border-color .2s;
+  }
+  .logo-sub a:hover { color: var(--gold2); border-color: rgba(240,201,106,.4); }
+
+  /* Language toggle */
+  .lang-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .18s, color .18s;
+  }
+  .lang-btn.active {
+    background: var(--gold);
+    color: #0a0b0f;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--surface-border);
+    padding: 24px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    overflow-y: auto;
+    backdrop-filter: blur(12px);
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-left: 10px;
+    border-left: 2px solid var(--gold);
+  }
+
+  /* Odds table */
+  .odds-table {
+    width: 100%;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    border-collapse: collapse;
+  }
+  .odds-table td { padding: 4px 0; color: var(--muted); }
+  .odds-table td:last-child { text-align: right; color: var(--text); }
+  .odds-dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; margin-right: 6px; vertical-align: middle;
+  }
+
+  /* Controls */
+  .control-row { display: flex; flex-direction: column; gap: 5px; }
+  .control-label { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+
+  /* Copies input group: select + manual number side by side */
+  .copies-group {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    align-items: center;
+  }
+  .copies-manual {
+    width: 64px !important;
+    text-align: center;
+    padding: 9px 6px !important;
+  }
+
+  select,
+  input[type="number"],
+  input[type="text"] {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7085'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  select:focus, input:focus {
+    outline: none;
+    border-color: var(--gold2);
+    box-shadow: 0 0 0 3px rgba(240,201,106,.1);
+    background: rgba(255,255,255,.07);
+  }
+  /* highlight manual input when it overrides the preset */
+  input.copies-manual.custom-active {
+    border-color: rgba(240,201,106,.5);
+    color: var(--gold2);
+  }
+
+  /* Buttons */
+  button {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 9px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .15s, transform .1s, border-color .15s, box-shadow .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    letter-spacing: .02em;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #d4a93a, #f0c96a);
+    border-color: rgba(255,255,255,.18);
+    color: #0a0b0f;
+    font-weight: 800;
+    box-shadow: 0 12px 32px rgba(212,169,58,.2);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 42px rgba(212,169,58,.3);
+    filter: brightness(1.06);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,.04);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,.08); }
+
+  /* ── MAIN ── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    padding: 24px 28px;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--surface-border);
+    border-radius: 999px;
+    padding: 4px;
+    width: fit-content;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, rgba(212,169,58,.18), rgba(77,155,245,.1));
+    color: var(--gold2);
+    border: 1px solid rgba(240,201,106,.22);
+  }
+
+  .tab-panel { display: none; flex-direction: column; gap: 20px; }
+  .tab-panel.active { display: flex; }
+
+  /* Panel cards */
+  .panel-card {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .panel-card-title {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+    padding-left: 10px;
+    border-left: 2px solid var(--gold);
+  }
+
+  /* Input grid inside panels */
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+    margin-bottom: 20px;
+  }
+  .input-grid .full { grid-column: 1 / -1; }
+
+  /* Run button row */
+  .run-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  /* ── RESULT AREAS ── */
+  #result-single, #result-compare { min-height: 80px; }
+
+  /* Single result */
+  .single-result { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .metric-card {
+    flex: 1;
+    min-width: 140px;
+    background: rgba(15,18,28,.85);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  }
+  .metric-label {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .metric-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+  .metric-value.gold { color: var(--gold2); }
+  .metric-value.blue { color: var(--c3); }
+  .metric-sub {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .metric-card.highlight {
+    border-color: rgba(240,201,106,.3);
+    background: linear-gradient(160deg, rgba(240,201,106,.08), rgba(15,18,28,.9));
+    box-shadow: 0 0 40px rgba(240,201,106,.1);
+  }
+  .no-success {
+    color: var(--red);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 18px 0;
+  }
+
+  /* Compare result cards */
+  .compare-grid { display: flex; gap: 14px; }
+  .compare-card {
+    flex: 1;
+    background: rgba(15,18,28,.85);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform .2s, border-color .2s;
+  }
+  .compare-card:hover { transform: translateY(-2px); }
+  .compare-card.best {
+    border-color: var(--gold2);
+    box-shadow: 0 0 48px rgba(240,201,106,.18);
+    background: linear-gradient(160deg, rgba(240,201,106,.07), rgba(15,18,28,.9));
+  }
+  .compare-card-level { font-size: 18px; font-weight: 800; color: var(--text); }
+  .compare-badge {
+    display: inline-flex;
+    background: var(--gold2);
+    color: #08101a;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    width: fit-content;
+  }
+  .compare-chance {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--gold2);
+    line-height: 1;
+  }
+  .compare-chance.low { color: var(--c3); }
+  .bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,.06);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+  .compare-details {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-top: 8px;
+    border-top: 1px solid var(--surface-border);
+  }
+  .compare-details span { color: var(--gold2); }
+
+  /* Loading */
+  .running-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(240,201,106,.2);
+    border-top-color: var(--gold2);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+
+  /* Info banner */
+  .info-banner {
+    background: rgba(77,155,245,.06);
+    border: 1px solid rgba(77,155,245,.15);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    padding: 8px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity .25s;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+
+  /* Branding */
+  .branding-card {
+    background: rgba(15,18,28,.78);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .branding-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.65;
+    font-family: 'Space Mono', monospace;
+  }
+  .branding-link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    text-decoration: none;
+    transition: background .25s, color .25s, box-shadow .25s, border-color .25s;
+  }
+  .branding-link-btn:hover {
+    background: #0a66c2;
+    color: #fff;
+    border-color: rgba(10,102,194,.45);
+    box-shadow: 0 10px 32px rgba(10,102,194,.26);
+  }
+  .branding-link-btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-title">TFT Monte Carlo</span>
+    <span class="logo-set">SET 17 · SPACE GODS</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="logo-sub">by <a href="https://www.linkedin.com/in/mahan-javanmardi-642a44209/" target="_blank" rel="noopener noreferrer">Mahan</a></span>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="lang-de" onclick="setLang('de')">DE</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label" data-i18n="odds_label">Wahrscheinlichkeiten — Level <span id="odds-level">5</span></div>
+      <table class="odds-table">
+        <tbody id="odds-table-body"></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="section-label" data-i18n="shared_label">Simulation (Gemeinsam)</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+
+        <div class="control-row">
+          <div class="control-label" data-i18n="champion">Champion</div>
+          <input type="text" id="shared-champ" data-i18n-placeholder="champ_placeholder" placeholder="z.B. Ezreal" list="champ-list">
+          <datalist id="champ-list"></datalist>
+        </div>
+
+        <div class="control-row">
+          <div class="control-label" data-i18n="target_copies">Ziel-Kopien</div>
+          <div class="copies-group">
+            <select id="shared-stars" onchange="onPresetCopiesChange()">
+              <option value="3">3 — 2★</option>
+              <option value="6" selected>6 — 3★ möglich</option>
+              <option value="9">9 — 3★</option>
+              <option value="custom" data-i18n-option="custom_option">Manuell…</option>
+            </select>
+            <input type="number" id="shared-copies-manual" class="copies-manual"
+              value="6" min="1" max="99" title="Manuelle Eingabe"
+              onchange="onManualCopiesChange()" oninput="onManualCopiesChange()">
+          </div>
+        </div>
+
+        <div class="control-row">
+          <div class="control-label" data-i18n="start_gold">Start-Gold</div>
+          <input type="number" id="shared-gold" value="50" min="2" max="999">
+        </div>
+        <div class="control-row">
+          <div class="control-label" data-i18n="target_out">Target bereits weg</div>
+          <input type="number" id="shared-target-out" value="0" min="0" max="28">
+        </div>
+        <div class="control-row">
+          <div class="control-label" data-i18n="others_out">Andere des Tiers weg</div>
+          <input type="number" id="shared-others-out" value="0" min="0" max="200">
+        </div>
+
+      </div>
+    </div>
+
+    <div class="branding-card">
+      <div class="section-label" style="margin-bottom:8px;">Creator</div>
+      <p data-i18n="branding_text">Monte Carlo Stochastik-Analyse für Entscheidungsprozesse unter Ungewissheit im kompetitiven Esport.</p>
+      <a class="branding-link-btn" href="https://www.linkedin.com/in/mahan-javanmardi-642a44209/" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.98 3.5C4.98 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 22h4V7h-4v15zm7-15h3.8v2.2h.1c.5-1 1.8-2.2 3.7-2.2 4 0 4.8 2.6 4.8 6v8.9h-4V14.2c0-2.1 0-4.7-2.9-4.7-2.9 0-3.3 2.3-3.3 4.6V22h-4V7z"/></svg>
+        Connect via LinkedIn
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('panel-single', this)" data-i18n="tab_single">⚙️ Single Level</button>
+      <button class="tab-btn" onclick="switchTab('panel-compare', this)" data-i18n="tab_compare">🔁 Level-Vergleich</button>
+    </div>
+
+    <!-- PANEL: Single -->
+    <div id="panel-single" class="tab-panel active">
+      <div class="panel-card">
+        <div class="panel-card-title" data-i18n="config_title">Konfiguration</div>
+        <div class="input-grid">
+          <div class="control-row">
+            <div class="control-label" data-i18n="sim_level">Simuliertes Level</div>
+            <select id="single-level">
+              <option value="4">Level 4</option>
+              <option value="5" selected>Level 5</option>
+              <option value="6">Level 6</option>
+              <option value="7">Level 7</option>
+              <option value="8">Level 8</option>
+              <option value="9">Level 9</option>
+              <option value="10">Level 10</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label" data-i18n="num_trials">Anzahl Trials</div>
+            <select id="single-trials">
+              <option value="1000" data-i18n-option="trials_fast">1.000 (schnell)</option>
+              <option value="10000" selected data-i18n-option="trials_std">10.000 (standard)</option>
+              <option value="50000" data-i18n-option="trials_prec">50.000 (präzise)</option>
+            </select>
+          </div>
+          <div class="control-row full">
+            <div class="control-label" data-i18n="owned_copies">Eigene Kopien bereits vorhanden</div>
+            <input type="number" id="single-owned" value="0" min="0" max="8" placeholder="0–8">
+          </div>
+        </div>
+        <div class="info-banner" id="single-pool-info" data-i18n="pool_hint">Bitte Champion in der Sidebar eingeben.</div>
+        <div class="run-row" style="margin-top:16px;">
+          <button class="btn-primary" onclick="runSingle()" data-i18n="run_single">▶ Simulation starten</button>
+          <div id="single-spinner" style="display:none;" class="running-indicator">
+            <div class="spinner"></div> <span data-i18n="calculating">Berechne…</span>
+          </div>
+        </div>
+      </div>
+      <div id="result-single"></div>
+    </div>
+
+    <!-- PANEL: Compare -->
+    <div id="panel-compare" class="tab-panel">
+      <div class="panel-card">
+        <div class="panel-card-title" data-i18n="compare_title">Level-Vergleich</div>
+        <div class="input-grid">
+          <div class="control-row">
+            <div class="control-label" data-i18n="current_level">Aktuelles Level</div>
+            <select id="compare-base-level">
+              <option value="4">Level 4</option>
+              <option value="5" selected>Level 5</option>
+              <option value="6">Level 6</option>
+              <option value="7">Level 7</option>
+              <option value="8">Level 8</option>
+              <option value="9">Level 9</option>
+              <option value="10">Level 10</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label" data-i18n="current_xp">Aktuelles XP</div>
+            <input type="number" id="compare-xp" value="0" min="0" max="99" placeholder="0">
+          </div>
+          <div class="control-row">
+            <div class="control-label" data-i18n="num_trials">Anzahl Trials</div>
+            <select id="compare-trials">
+              <option value="1000" data-i18n-option="trials_fast">1.000 (schnell)</option>
+              <option value="10000" selected data-i18n-option="trials_std">10.000 (standard)</option>
+              <option value="50000" data-i18n-option="trials_prec">50.000 (präzise)</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <div class="control-label" data-i18n="owned_copies_short">Eigene Kopien</div>
+            <input type="number" id="compare-owned" value="0" min="0" max="8" placeholder="0–8">
+          </div>
+        </div>
+        <div class="info-banner" id="compare-pool-info" data-i18n="pool_hint">Bitte Champion in der Sidebar eingeben.</div>
+        <div class="run-row" style="margin-top:16px;">
+          <button class="btn-primary" onclick="runCompare()" data-i18n="run_compare">▶ Vergleich starten</button>
+          <div id="compare-spinner" style="display:none;" class="running-indicator">
+            <div class="spinner"></div> <span data-i18n="calculating">Berechne…</span>
+          </div>
+        </div>
+      </div>
+      <div id="result-compare"></div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── TRANSLATIONS ──
+const I18N = {
+  de: {
+    odds_label:        'Wahrscheinlichkeiten — Level ',
+    shared_label:      'Simulation (Gemeinsam)',
+    champion:          'Champion',
+    champ_placeholder: 'z.B. Ezreal',
+    target_copies:     'Ziel-Kopien',
+    custom_option:     'Manuell…',
+    start_gold:        'Start-Gold',
+    target_out:        'Target bereits weg',
+    others_out:        'Andere des Tiers weg',
+    branding_text:     'Monte Carlo Stochastik-Analyse für Entscheidungsprozesse unter Ungewissheit im kompetitiven Esport.',
+    tab_single:        '⚙️ Single Level',
+    tab_compare:       '🔁 Level-Vergleich',
+    config_title:      'Konfiguration',
+    sim_level:         'Simuliertes Level',
+    num_trials:        'Anzahl Trials',
+    trials_fast:       '1.000 (schnell)',
+    trials_std:        '10.000 (standard)',
+    trials_prec:       '50.000 (präzise)',
+    owned_copies:      'Eigene Kopien bereits vorhanden',
+    owned_copies_short:'Eigene Kopien',
+    pool_hint:         'Bitte Champion in der Sidebar eingeben.',
+    run_single:        '▶ Simulation starten',
+    run_compare:       '▶ Vergleich starten',
+    calculating:       'Berechne…',
+    compare_title:     'Level-Vergleich',
+    current_level:     'Aktuelles Level',
+    current_xp:        'Aktuelles XP',
+    // result strings
+    success_chance:    'Erfolgschance',
+    avg_rerolls:       'Ø Rerolls (bei Erfolg)',
+    rerolls_sub:       'Rerolls bis zum Ziel',
+    avg_gold_spent:    'Ø Gold ausgegeben',
+    gold_budget:       '% von __G Budget',
+    avg_remaining:     'Ø Restgold',
+    after_buying:      'nach Kauf von __',
+    no_success:        'Keine erfolgreichen Trials — Budget oder Pool reicht nicht aus.',
+    result_label:      'Ergebnis',
+    current_badge:     '(aktuell)',
+    avg_rerolls_short: 'Ø Rerolls',
+    remaining_gold:    'Ø Restgold',
+    level_cost:        'Level-Kosten',
+    trials_label:      'Trials',
+    cost_labels:       ['1-Kosten','2-Kosten','3-Kosten','4-Kosten','5-Kosten'],
+    pool_info:         '__ · __-Kosten · Pool: __ Kopien · __ Champions im Tier · Gesamtpool: __',
+    pool_hint_found:   '__ · __G · Pool: __ · __ Champions · Gesamt: __',
+    champ_not_found:   '"__" nicht gefunden.',
+  },
+  en: {
+    odds_label:        'Drop Rates — Level ',
+    shared_label:      'Simulation (Shared)',
+    champion:          'Champion',
+    champ_placeholder: 'e.g. Ezreal',
+    target_copies:     'Target Copies',
+    custom_option:     'Custom…',
+    start_gold:        'Starting Gold',
+    target_out:        'Target Already Out',
+    others_out:        'Others in Tier Out',
+    branding_text:     'Monte Carlo stochastic analysis for decision-making processes under uncertainty in competitive esports.',
+    tab_single:        '⚙️ Single Level',
+    tab_compare:       '🔁 Level Compare',
+    config_title:      'Configuration',
+    sim_level:         'Simulated Level',
+    num_trials:        'Number of Trials',
+    trials_fast:       '1,000 (fast)',
+    trials_std:        '10,000 (standard)',
+    trials_prec:       '50,000 (precise)',
+    owned_copies:      'Copies Already Owned',
+    owned_copies_short:'Copies Owned',
+    pool_hint:         'Please enter a champion in the sidebar.',
+    run_single:        '▶ Run Simulation',
+    run_compare:       '▶ Run Comparison',
+    calculating:       'Calculating…',
+    compare_title:     'Level Comparison',
+    current_level:     'Current Level',
+    current_xp:        'Current XP',
+    // result strings
+    success_chance:    'Success Chance',
+    avg_rerolls:       'Avg Rerolls (success)',
+    rerolls_sub:       'Rerolls to reach goal',
+    avg_gold_spent:    'Avg Gold Spent',
+    gold_budget:       '% of __G budget',
+    avg_remaining:     'Avg Remaining Gold',
+    after_buying:      'after buying __',
+    no_success:        'No successful trials — budget or pool insufficient.',
+    result_label:      'Result',
+    current_badge:     '(current)',
+    avg_rerolls_short: 'Avg Rerolls',
+    remaining_gold:    'Avg Remaining',
+    level_cost:        'Level-up Cost',
+    trials_label:      'Trials',
+    cost_labels:       ['1-Cost','2-Cost','3-Cost','4-Cost','5-Cost'],
+    pool_hint_found:   '__ · __G · Pool: __ · __ Champions · Total: __',
+    champ_not_found:   '"__" not found.',
+  }
+};
+
+let lang = 'de';
+
+function t(key) { return I18N[lang][key] || key; }
+
+function setLang(l) {
+  lang = l;
+  document.getElementById('lang-de').classList.toggle('active', l === 'de');
+  document.getElementById('lang-en').classList.toggle('active', l === 'en');
+  applyTranslations();
+}
+
+function applyTranslations() {
+  // Static data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (key === 'odds_label') {
+      // keep the level span
+      el.childNodes[0].textContent = t('odds_label');
+      return;
+    }
+    if (I18N[lang][key] !== undefined) el.textContent = I18N[lang][key];
+  });
+
+  // Placeholders
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+
+  // Select options with data-i18n-option
+  document.querySelectorAll('option[data-i18n-option]').forEach(opt => {
+    const key = opt.getAttribute('data-i18n-option');
+    if (I18N[lang][key]) opt.textContent = I18N[lang][key];
+  });
+
+  // Update pool banners
+  onSharedChampChange();
+}
+
+// ── DATA ──
+const CHAMPIONS = [
+  { name:"Aatrox",          cost:1, traits:["N.O.V.A.","Bastion"] },
+  { name:"Briar",           cost:1, traits:["Anima","Primordian","Rogue"] },
+  { name:"Caitlyn",         cost:1, traits:["N.O.V.A.","Sniper"] },
+  { name:"Cho'Gath",        cost:1, traits:["Dark Star","Brawler"] },
+  { name:"Ezreal",          cost:1, traits:["Timebreaker","Sniper"] },
+  { name:"Leona",           cost:1, traits:["Arbiter","Vanguard"] },
+  { name:"Lissandra",       cost:1, traits:["Dark Star","Replicator","Shepherd"] },
+  { name:"Nasus",           cost:1, traits:["Space Groove","Vanguard"] },
+  { name:"Poppy",           cost:1, traits:["Meeple","Bastion"] },
+  { name:"Rek'Sai",         cost:1, traits:["Primordian","Brawler"] },
+  { name:"Talon",           cost:1, traits:["Stargazer","Rogue"] },
+  { name:"Teemo",           cost:1, traits:["Space Groove","Shepherd"] },
+  { name:"Twisted Fate",    cost:1, traits:["Stargazer","Fateweaver"] },
+  { name:"Veigar",          cost:1, traits:["Meeple","Replicator"] },
+  { name:"Akali",           cost:2, traits:["N.O.V.A.","Marauder"] },
+  { name:"Bel'Veth",        cost:2, traits:["Primordian","Challenger","Marauder"] },
+  { name:"Gnar",            cost:2, traits:["Meeple","Sniper"] },
+  { name:"Gragas",          cost:2, traits:["Psionic","Brawler"] },
+  { name:"Gwen",            cost:2, traits:["Space Groove","Rogue"] },
+  { name:"Jax",             cost:2, traits:["Stargazer","Bastion"] },
+  { name:"Jinx",            cost:2, traits:["Anima","Challenger"] },
+  { name:"Meepsie",         cost:2, traits:["Meeple","Shepherd","Voyager"] },
+  { name:"Milio",           cost:2, traits:["Timebreaker","Fateweaver"] },
+  { name:"Mordekaiser",     cost:2, traits:["Dark Star","Vanguard","Conduit"] },
+  { name:"Pantheon",        cost:2, traits:["Timebreaker","Brawler","Replicator"] },
+  { name:"Pyke",            cost:2, traits:["Psionic","Voyager"] },
+  { name:"Zoe",             cost:2, traits:["Arbiter","Conduit"] },
+  { name:"Aurora",          cost:3, traits:["Anima","Voyager"] },
+  { name:"Diana",           cost:3, traits:["Arbiter","Challenger"] },
+  { name:"Fizz",            cost:3, traits:["Meeple","Rogue"] },
+  { name:"Illaoi",          cost:3, traits:["Anima","Vanguard","Shepherd"] },
+  { name:"Kai'Sa",          cost:3, traits:["Dark Star","Rogue"] },
+  { name:"Lulu",            cost:3, traits:["Stargazer","Replicator"] },
+  { name:"Maokai",          cost:3, traits:["N.O.V.A.","Brawler"] },
+  { name:"Miss Fortune",    cost:3, traits:["Gun Goddess"] },
+  { name:"Ornn",            cost:3, traits:["Space Groove","Bastion"] },
+  { name:"Rhaast",          cost:3, traits:["Redeemer"] },
+  { name:"Samira",          cost:3, traits:["Space Groove","Sniper"] },
+  { name:"Urgot",           cost:3, traits:["Mecha","Brawler","Marauder"] },
+  { name:"Viktor",          cost:3, traits:["Psionic","Conduit"] },
+  { name:"Aurelion Sol",    cost:4, traits:["Mecha","Conduit"] },
+  { name:"Corki",           cost:4, traits:["Meeple","Fateweaver"] },
+  { name:"Karma",           cost:4, traits:["Dark Star","Voyager"] },
+  { name:"Kindred",         cost:4, traits:["N.O.V.A.","Challenger"] },
+  { name:"LeBlanc",         cost:4, traits:["Arbiter","Shepherd"] },
+  { name:"Master Yi",       cost:4, traits:["Psionic","Marauder"] },
+  { name:"Nami",            cost:4, traits:["Space Groove","Replicator"] },
+  { name:"Nunu",            cost:4, traits:["Stargazer","Vanguard"] },
+  { name:"Rammus",          cost:4, traits:["Meeple","Bastion"] },
+  { name:"Riven",           cost:4, traits:["Timebreaker","Rogue"] },
+  { name:"Tahm Kench",      cost:4, traits:["Oracle","Brawler"] },
+  { name:"The Mighty Mech", cost:4, traits:["Mecha","Voyager"] },
+  { name:"Xayah",           cost:4, traits:["Stargazer","Sniper"] },
+  { name:"Bard",            cost:5, traits:["Meeple","Conduit"] },
+  { name:"Blitzcrank",      cost:5, traits:["Space Groove","Vanguard","Party Animal"] },
+  { name:"Fiora",           cost:5, traits:["Anima","Divine Duelist","Marauder"] },
+  { name:"Graves",          cost:5, traits:["Factory New"] },
+  { name:"Jhin",            cost:5, traits:["Dark Star","Eradicator","Sniper"] },
+  { name:"Morgana",         cost:5, traits:["Dark Lady"] },
+  { name:"Shen",            cost:5, traits:["Bulwark","Bastion"] },
+  { name:"Sona",            cost:5, traits:["Commander","Shepherd","Psionic"] },
+  { name:"Vex",             cost:5, traits:["Doomer"] },
+];
+
+const POOL_SIZE = { 1:29, 2:22, 3:18, 4:10, 5:9 };
+const ODDS = {
+  4:  [55, 30, 15,  0,  0],
+  5:  [45, 33, 20,  2,  0],
+  6:  [30, 40, 25,  5,  0],
+  7:  [19, 30, 40, 10,  1],
+  8:  [15, 20, 32, 30,  3],
+  9:  [10, 17, 25, 33, 15],
+  10: [ 5, 10, 20, 40, 25],
+};
+const XP_TO_LEVEL = { 5:20, 6:36, 7:56, 8:80, 9:100, 10:Infinity };
+const COST_COLORS = ['','var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
+
+// ── COPIES INPUT: preset select + manual number ──
+function getTargetCopies() {
+  return parseInt(document.getElementById('shared-copies-manual').value) || 6;
+}
+
+function onPresetCopiesChange() {
+  const sel = document.getElementById('shared-stars');
+  const manual = document.getElementById('shared-copies-manual');
+  if (sel.value === 'custom') {
+    manual.focus();
+    manual.classList.add('custom-active');
+  } else {
+    manual.value = sel.value;
+    manual.classList.remove('custom-active');
+  }
+}
+
+function onManualCopiesChange() {
+  const manual = document.getElementById('shared-copies-manual');
+  const sel = document.getElementById('shared-stars');
+  const v = parseInt(manual.value);
+  if (v === 3 || v === 6 || v === 9) {
+    sel.value = String(v);
+    manual.classList.remove('custom-active');
+  } else {
+    sel.value = 'custom';
+    manual.classList.add('custom-active');
+  }
+}
+
+// ── TOAST ──
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = 1;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.style.opacity = 0; }, 2200);
+}
+
+// ── TABS ──
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById(tabId);
+  if (panel) panel.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+// ── ODDS TABLE ──
+function renderOdds(level) {
+  const odds = ODDS[level] || ODDS[5];
+  document.getElementById('odds-level').textContent = level;
+  const labels = t('cost_labels');
+  document.getElementById('odds-table-body').innerHTML = odds.map((o, i) =>
+    `<tr>
+      <td><span class="odds-dot" style="background:${COST_COLORS[i+1]}"></span>${labels[i]}</td>
+      <td>${o}%</td>
+    </tr>`
+  ).join('');
+}
+
+// ── AUTOCOMPLETE ──
+function buildDatalist() {
+  const dl = document.getElementById('champ-list');
+  dl.innerHTML = CHAMPIONS.map(c => `<option value="${c.name}">`).join('');
+}
+
+// ── POOL INFO ──
+function updatePoolInfo(bannerEl, champName) {
+  if (!champName) {
+    bannerEl.textContent = t('pool_hint');
+    return;
+  }
+  const champ = CHAMPIONS.find(c => c.name.toLowerCase() === champName.toLowerCase());
+  if (!champ) {
+    bannerEl.textContent = t('champ_not_found').replace('__', champName);
+    return;
+  }
+  const tierChamps = CHAMPIONS.filter(c => c.cost === champ.cost);
+  const totalPool  = tierChamps.length * POOL_SIZE[champ.cost];
+  if (lang === 'en') {
+    bannerEl.textContent =
+      `${champ.name} · ${champ.cost}-cost · Pool: ${POOL_SIZE[champ.cost]} copies · ` +
+      `${tierChamps.length} champions in tier · Total pool: ${totalPool}`;
+  } else {
+    bannerEl.textContent =
+      `${champ.name} · ${champ.cost}-Kosten · Pool: ${POOL_SIZE[champ.cost]} Kopien · ` +
+      `${tierChamps.length} Champions im Tier · Gesamtpool: ${totalPool}`;
+  }
+}
+
+// ── VALIDATION ──
+function validateInputs(champName, targetOut, othersOut) {
+  if (!champName) {
+    toast(lang === 'en' ? 'Enter a champion!' : 'Champion eingeben!');
+    return null;
+  }
+  const champ = CHAMPIONS.find(c => c.name.toLowerCase() === champName.toLowerCase());
+  if (!champ) {
+    toast(lang === 'en' ? `"${champName}" not found!` : `"${champName}" nicht gefunden!`);
+    return null;
+  }
+  const tierChamps     = CHAMPIONS.filter(c => c.cost === champ.cost);
+  const totalOtherPool = (tierChamps.length - 1) * POOL_SIZE[champ.cost];
+  if (targetOut >= POOL_SIZE[champ.cost]) {
+    toast(`Max target out: ${POOL_SIZE[champ.cost] - 1}`);
+    return null;
+  }
+  if (othersOut > totalOtherPool) {
+    toast(`Max others out: ${totalOtherPool}`);
+    return null;
+  }
+  return champ;
+}
+
+// ── CORE SIMULATION ──
+function getRandomTier(level) {
+  const odds = ODDS[level];
+  const r = Math.random() * 100;
+  let cum = 0;
+  for (let i = 0; i < odds.length; i++) {
+    cum += odds[i];
+    if (r < cum) return i + 1;
+  }
+  return odds.length; // fallback: highest tier
+}
+
+function runSingleTrial(champCost, targetCopies, startGold, simLevel, targetOut, othersOut, ownedCopies) {
+  let currentGold = startGold;
+  let goldSpent   = 0;
+  let rolls       = 0;
+
+  // Split ownedCopies into star buckets correctly
+  let ones   = ownedCopies % 3;
+  let twos   = Math.floor(ownedCopies / 3) % 3;
+  let threes = Math.floor(ownedCopies / 9);
+
+  const tierChamps = CHAMPIONS.filter(c => c.cost === champCost);
+  let targetPool = POOL_SIZE[champCost] - targetOut;
+  let totalPool  = (tierChamps.length * POOL_SIZE[champCost]) - targetOut - othersOut;
+
+  while (true) {
+    const totalCopies = ones + (twos * 3) + (threes * 9);
+    if (totalCopies >= targetCopies) return { success: true, rolls, goldSpent };
+    if (currentGold < 2) return { success: false, rolls, goldSpent };
+
+    currentGold -= 2;
+    goldSpent   += 2;
+    rolls++;
+
+    let hitsThisShop = 0;
+    const snapTarget = targetPool;
+    const snapTotal  = totalPool;
+
+    for (let i = 0; i < 5; i++) {
+      const tier = getRandomTier(simLevel);
+      if (tier === champCost && snapTotal > 0 && snapTarget > 0) {
+        if (Math.random() < (snapTarget / snapTotal)) {
+          if (currentGold >= champCost) {
+            currentGold -= champCost;
+            goldSpent   += champCost;
+            hitsThisShop++;
+            ones++;
+          }
+        }
+      }
+    }
+
+    targetPool = Math.max(0, targetPool - hitsThisShop);
+    totalPool  = Math.max(0, totalPool  - hitsThisShop);
+
+    while (ones >= 3)  { ones -= 3; twos++; }
+    while (twos >= 3)  { twos -= 3; threes++; }
+  }
+}
+
+function runTrials(champ, targetCopies, startGold, simLevel, targetOut, othersOut, ownedCopies, numTrials) {
+  const results = [];
+  for (let i = 0; i < numTrials; i++) {
+    results.push(runSingleTrial(champ.cost, targetCopies, startGold, simLevel, targetOut, othersOut, ownedCopies));
+  }
+  const successes     = results.filter(r => r.success);
+  const successChance = (successes.length / numTrials) * 100;
+  const avgRolls      = successes.length > 0 ? successes.reduce((s,r) => s + r.rolls, 0) / successes.length : 0;
+  const avgGold       = successes.length > 0 ? successes.reduce((s,r) => s + r.goldSpent, 0) / successes.length : 0;
+  return { level: simLevel, successChance, avgRolls, avgGold, successCount: successes.length, numTrials, startGold };
+}
+
+function goldToReachLevel(fromLevel, currentXP, toLevel) {
+  if (toLevel <= fromLevel) return 0;
+  let xpNeeded = 0;
+  for (let L = fromLevel + 1; L <= toLevel; L++) xpNeeded += (XP_TO_LEVEL[L] || 0);
+  const remaining = Math.max(0, xpNeeded - currentXP);
+  return Math.ceil(remaining / 4) * 4;
+}
+
+// ── SINGLE SIMULATION ──
+function runSingle() {
+  const champName   = document.getElementById('shared-champ').value.trim();
+  const targetCopies = getTargetCopies();
+  const startGold   = parseInt(document.getElementById('shared-gold').value) || 50;
+  const targetOut   = parseInt(document.getElementById('shared-target-out').value) || 0;
+  const othersOut   = parseInt(document.getElementById('shared-others-out').value) || 0;
+  const simLevel    = parseInt(document.getElementById('single-level').value);
+  const numTrials   = parseInt(document.getElementById('single-trials').value);
+  const ownedCopies = parseInt(document.getElementById('single-owned').value) || 0;
+
+  const champ = validateInputs(champName, targetOut, othersOut);
+  if (!champ) return;
+
+  renderOdds(simLevel);
+  document.getElementById('single-spinner').style.display = 'flex';
+  document.getElementById('result-single').innerHTML = '';
+
+  setTimeout(() => {
+    const stats = runTrials(champ, targetCopies, startGold, simLevel, targetOut, othersOut, ownedCopies, numTrials);
+    document.getElementById('single-spinner').style.display = 'none';
+    renderSingleResult(stats, champ);
+  }, 30);
+}
+
+function renderSingleResult(stats, champ) {
+  const sc  = stats.successChance.toFixed(1);
+  const ar  = stats.avgRolls.toFixed(1);
+  const ag  = stats.avgGold.toFixed(1);
+  const pct = ((stats.avgGold / stats.startGold) * 100).toFixed(1);
+  const rem = Math.max(0, stats.startGold - stats.avgGold).toFixed(1);
+
+  let html = `<div class="single-result">`;
+
+  html += `<div class="metric-card highlight">
+    <div class="metric-label">${t('success_chance')}</div>
+    <div class="metric-value gold">${sc}%</div>
+    <div class="metric-sub">${stats.successCount.toLocaleString()} / ${stats.numTrials.toLocaleString()} ${t('trials_label')}</div>
+  </div>`;
+
+  if (stats.successCount > 0) {
+    html += `<div class="metric-card">
+      <div class="metric-label">${t('avg_rerolls')}</div>
+      <div class="metric-value blue">${ar}</div>
+      <div class="metric-sub">${t('rerolls_sub')}</div>
+    </div>`;
+    html += `<div class="metric-card">
+      <div class="metric-label">${t('avg_gold_spent')}</div>
+      <div class="metric-value gold">${ag}G</div>
+      <div class="metric-sub">${pct}${t('gold_budget').replace('__', stats.startGold)}</div>
+    </div>`;
+    html += `<div class="metric-card">
+      <div class="metric-label">${t('avg_remaining')}</div>
+      <div class="metric-value">${rem}G</div>
+      <div class="metric-sub">${t('after_buying').replace('__', champ.name)}</div>
+    </div>`;
+  } else {
+    html += `<div class="metric-card">
+      <div class="metric-label">${t('result_label')}</div>
+      <div class="no-success">${t('no_success')}</div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('result-single').innerHTML = html;
+}
+
+// ── LEVEL COMPARE ──
+function runCompare() {
+  const champName    = document.getElementById('shared-champ').value.trim();
+  const targetCopies = getTargetCopies();
+  const startGold    = parseInt(document.getElementById('shared-gold').value) || 50;
+  const targetOut    = parseInt(document.getElementById('shared-target-out').value) || 0;
+  const othersOut    = parseInt(document.getElementById('shared-others-out').value) || 0;
+  const baseLevel    = parseInt(document.getElementById('compare-base-level').value);
+  const currentXP    = parseInt(document.getElementById('compare-xp').value) || 0;
+  const numTrials    = parseInt(document.getElementById('compare-trials').value);
+  const ownedCopies  = parseInt(document.getElementById('compare-owned').value) || 0;
+
+  const champ = validateInputs(champName, targetOut, othersOut);
+  if (!champ) return;
+
+  document.getElementById('compare-spinner').style.display = 'flex';
+  document.getElementById('result-compare').innerHTML = '';
+
+  setTimeout(() => {
+    const levels = [];
+    if (baseLevel - 1 >= 4)  levels.push(baseLevel - 1);
+    levels.push(baseLevel);
+    if (baseLevel + 1 <= 10) levels.push(baseLevel + 1);
+
+    const statsArr = levels.map(lvl => {
+      const upfrontGold   = goldToReachLevel(baseLevel, currentXP, lvl);
+      const effectiveGold = startGold - upfrontGold;
+      renderOdds(lvl);
+      if (effectiveGold < 2) {
+        return { level: lvl, successChance: 0, avgRolls: 0, avgGold: 0,
+          successCount: 0, numTrials, startGold: effectiveGold, upfrontGold, avgRemaining: 0 };
+      }
+      const s = runTrials(champ, targetCopies, effectiveGold, lvl, targetOut, othersOut, ownedCopies, numTrials);
+      s.upfrontGold  = upfrontGold;
+      s.avgRemaining = Math.max(0, effectiveGold - s.avgGold);
+      return s;
+    });
+
+    document.getElementById('compare-spinner').style.display = 'none';
+    renderCompareResult(statsArr, baseLevel);
+  }, 30);
+}
+
+function renderCompareResult(statsArr, baseLevel) {
+  if (!statsArr || statsArr.length === 0) return;
+
+  let best = statsArr[0];
+  for (const s of statsArr) {
+    if (s.successChance > best.successChance ||
+       (s.successChance === best.successChance && (s.avgRemaining||0) > (best.avgRemaining||0))) {
+      best = s;
+    }
+  }
+
+  let html = `<div class="compare-grid">`;
+  for (const s of statsArr) {
+    const isBest   = s.level === best.level;
+    const isBase   = s.level === baseLevel;
+    const sc       = (s.successChance || 0).toFixed(1);
+    const barColor = isBest ? 'var(--gold2)' : 'var(--c3)';
+    const barWidth = Math.min(100, Math.max(0, s.successChance || 0));
+
+    html += `<div class="compare-card${isBest ? ' best' : ''}">`;
+    if (isBest) html += `<div class="compare-badge">Top Choice</div>`;
+    html += `<div class="compare-card-level">Level ${s.level}${isBase ? ` <span style="font-size:11px;color:var(--muted);font-weight:400;">${t('current_badge')}</span>` : ''}</div>`;
+    html += `<div class="compare-chance${s.successChance < 25 ? ' low' : ''}">${sc}%</div>`;
+    html += `<div class="bar-wrap"><div class="bar-fill" style="width:${barWidth}%;background:${barColor};"></div></div>`;
+    html += `<div class="compare-details">`;
+    html += `<div>${t('avg_rerolls_short')}: <span>${(s.avgRolls||0).toFixed(1)}</span></div>`;
+    html += `<div>${t('remaining_gold')}: <span>${(s.avgRemaining||0).toFixed(1)}G</span></div>`;
+    html += `<div>${t('level_cost')}: <span>${s.upfrontGold || 0}G</span></div>`;
+    html += `<div>${t('trials_label')}: <span style="color:var(--muted);">${s.numTrials.toLocaleString()}</span></div>`;
+    html += `</div></div>`;
+  }
+  html += `</div>`;
+  document.getElementById('result-compare').innerHTML = html;
+}
+
+// ── LIVE UPDATES ──
+function onSharedChampChange() {
+  const val = document.getElementById('shared-champ').value.trim();
+  updatePoolInfo(document.getElementById('single-pool-info'), val);
+  updatePoolInfo(document.getElementById('compare-pool-info'), val);
+}
+
+document.getElementById('shared-champ').addEventListener('input', onSharedChampChange);
+document.getElementById('single-level').addEventListener('change', () => {
+  renderOdds(parseInt(document.getElementById('single-level').value));
+});
+document.getElementById('compare-base-level').addEventListener('change', () => {
+  renderOdds(parseInt(document.getElementById('compare-base-level').value));
+});
+
+// ── INIT ──
+buildDatalist();
+renderOdds(5);
+</script>
+</body>
+</html>
